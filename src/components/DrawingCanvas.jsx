@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 
-const DrawingCanvas = ({ mode, color }) => {
+const DrawingCanvas = ({ mode, color, onSave }) => {
     const canvasRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
+    const [points, setPoints] = useState([]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -44,21 +45,32 @@ const DrawingCanvas = ({ mode, color }) => {
         context.stroke();
         context.beginPath();
         context.moveTo(x, y);
+
+        if (mode === 'write') {
+            setPoints(prevPoints => [...prevPoints, { x, y, color }]);
+        }
+    };
+
+    const handleSave = () => {
+        onSave(points);
     };
 
     return (
-        <canvas
-            ref={canvasRef}
-            width={800}
-            height={600}
-            style={{ border: '1px solid black' }}
-            onMouseDown={startDrawing}
-            onMouseUp={endDrawing}
-            onMouseMove={draw}
-            onTouchStart={startDrawing}
-            onTouchEnd={endDrawing}
-            onTouchMove={draw}
-        />
+        <div>
+            <canvas
+                ref={canvasRef}
+                width={800}
+                height={600}
+                style={{ border: '1px solid black' }}
+                onMouseDown={startDrawing}
+                onMouseUp={endDrawing}
+                onMouseMove={draw}
+                onTouchStart={startDrawing}
+                onTouchEnd={endDrawing}
+                onTouchMove={draw}
+            />
+            <button onClick={handleSave}>Save Drawing</button>
+        </div>
     );
 };
 

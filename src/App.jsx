@@ -3,10 +3,13 @@ import './App.css';
 import ToggleButton from './components/ToggleButton';
 import DrawingCanvas from './components/DrawingCanvas';
 import ColorButton from './components/ColorButton';
+import ModeDropdown from './components/ModeDropdown';
+import axios from 'axios';
 
 function App() {
     const [mode, setMode] = useState('write');
-    const [color, setColor] = useState('black');
+    const [color, setColor] = useState('red'); // Defaultfarbe auf 'red' gesetzt
+    const [selectedMode, setSelectedMode] = useState('Ionisch'); // Default-Auswahl für das Dropdown-Menü
 
     const handleToggle = (newMode) => {
         setMode(newMode);
@@ -14,6 +17,24 @@ function App() {
 
     const handleColorSelect = (selectedColor) => {
         setColor(selectedColor);
+    };
+
+    const handleModeSelect = (mode) => {
+        setSelectedMode(mode);
+    };
+
+    const saveDrawing = async (points) => {
+        const data = {
+            name: 'My Drawing',
+            points: points
+        };
+
+        try {
+            const response = await axios.post('http://your-backend-url/synthdata', data);
+            console.log('Save successful', response.data);
+        } catch (error) {
+            console.error('Error saving data', error);
+        }
     };
 
     return (
@@ -24,7 +45,8 @@ function App() {
                     <ColorButton key={color} color={color} onSelectColor={handleColorSelect} />
                 ))}
             </div>
-            <DrawingCanvas mode={mode} color={color} />
+            <ModeDropdown selectedMode={selectedMode} onSelectMode={handleModeSelect} />
+            <DrawingCanvas mode={mode} color={color} onSave={saveDrawing} />
         </div>
     );
 }
