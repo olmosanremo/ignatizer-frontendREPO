@@ -21,6 +21,7 @@ const DrawingCanvas = ({ mode, color, onSave }) => {
     const endDrawing = () => {
         setIsDrawing(false);
         canvasRef.current.getContext('2d').beginPath();
+        onSave(points); // Save points when drawing ends
     };
 
     const draw = (event) => {
@@ -51,26 +52,19 @@ const DrawingCanvas = ({ mode, color, onSave }) => {
         }
     };
 
-    const handleSave = () => {
-        onSave(points);
-    };
-
     return (
-        <div>
-            <canvas
-                ref={canvasRef}
-                width={800}
-                height={600}
-                style={{ border: '1px solid black' }}
-                onMouseDown={startDrawing}
-                onMouseUp={endDrawing}
-                onMouseMove={draw}
-                onTouchStart={startDrawing}
-                onTouchEnd={endDrawing}
-                onTouchMove={draw}
-            />
-            <button onClick={handleSave}>Save Drawing</button>
-        </div>
+        <canvas
+            ref={canvasRef}
+            width={800}
+            height={600}
+            style={{ border: '1px solid black' }}
+            onMouseDown={startDrawing}
+            onMouseUp={endDrawing}
+            onMouseMove={draw}
+            onTouchStart={startDrawing}
+            onTouchEnd={endDrawing}
+            onTouchMove={draw}
+        />
     );
 };
 
