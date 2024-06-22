@@ -1,89 +1,103 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Stage, Layer, Line } from 'react-konva';
 
-const DrawingCanvas = ({ mode, color, onUpdatePoints }) => {
-    const canvasRef = useRef(null);
-    const [isDrawing, setIsDrawing] = useState(false);
-    const [points, setPoints] = useState([]);
+const DrawingCanvas = ({ trackId, mode, isPlaying, points, onUpdatePoints, currentColor, drawMode }) => {
+    const [lines, setLines] = useState(points);
+    const [newLine, setNewLine] = useState(null);
+    const isDrawing = useRef(false);
+
+    const handleMouseDown = () => {
+        if (mode === 'lock' || isPlaying) return;
+        isDrawing.current = true;
+        const pos = stageRef.current.getPointerPosition();
+        setNewLine({ points: [pos.x, pos.y], color: currentColor });
+    };
+
+    const handleMouseMove = () => {
+        if (!isDrawing.current || mode === 'lock' || isPlaying || !newLine) return;
+        const stage = stageRef.current;
+        const point = stage.getPointerPosition();
+        const updatedLine = { ...newLine, points: newLine.points.concat([point.x, point.y]) };
+        setNewLine(updatedLine);
+    };
+
+    const handleMouseUp = () => {
+        if (!isDrawing.current || !newLine) return;
+        const smoothedLine = smoothLine(newLine.points);
+        setLines([...lines, { ...newLine, points: smoothedLine }]);
+        setNewLine(null);
+        isDrawing.current = false;
+        onUpdatePoints([...lines, { ...newLine, points: smoothedLine }]);
+    };
+
+    const smoothLine = (points) => {
+        const smoothedPoints = [];
+        const length = points.length;
+
+        for (let i = 0; i < length - 2; i += 2) {
+            const x1 = points[i];
+            const y1 = points[i + 1];
+            const x2 = points[i + 2];
+            const y2 = points[i + 3];
+
+            smoothedPoints.push(x1, y1);
+
+            for (let j = 1; j <= 5; j++) {
+                const t = j / 5;
+                const x = x1 + t * (x2 - x1);
+                const y = y1 + t * (y2 - y1);
+                smoothedPoints.push(x, y);
+            }
+        }
+        smoothedPoints.push(points[length - 2], points[length - 1]);
+
+        return smoothedPoints;
+    };
+
+    const stageRef = useRef(null);
 
     useEffect(() => {
-        const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
-        context.fillStyle = 'white';
-        context.fillRect(0, 0, canvas.width, canvas.height);
-    }, []);
-
-    const startDrawing = (event) => {
-        setIsDrawing(true);
-        draw(event);
-    };
-
-    const endDrawing = () => {
-        setIsDrawing(false);
-        const context = canvasRef.current.getContext('2d');
-        context.beginPath();
-        // Update points only after drawing ends
-        onUpdatePoints(points);
-    };
-
-    const draw = (event) => {
-        if (!isDrawing) return;
-        const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
-        const rect = canvas.getBoundingClientRect();
-
-        let x, y;
-        if (event.touches) {
-            x = event.touches[0].clientX - rect.left;
-            y = event.touches[0].clientY - rect.top;
-        } else {
-            x = event.clientX - rect.left;
-            y = event.clientY - rect.top;
-        }
-
-        context.lineWidth = mode === 'write' ? 2 : 10;
-        context.strokeStyle = mode === 'write' ? color : 'white';
-
-        context.lineTo(x, y);
-        context.stroke();
-        context.beginPath();
-        context.moveTo(x, y);
-
-        if (mode === 'write') {
-            setPoints((prevPoints) => {
-                const newPoints = [...prevPoints, { x, y, color }];
-                return newPoints;
-            });
-        }
-    };
-
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        context.fillStyle = 'white';
-        context.fillRect(0, 0, canvas.width, canvas.height);
-
-        points.forEach((point) => {
-            context.beginPath();
-            context.arc(point.x, point.y, 1, 0, Math.PI * 2);
-            context.fillStyle = point.color;
-            context.fill();
-        });
+        setLines(points);
     }, [points]);
 
     return (
-        <canvas
-            ref={canvasRef}
+        <Stage
             width={800}
             height={600}
+            onMouseDown={handleMouseDown}
+            onMousemove={handleMouseMove}
+            onMouseup={handleMouseUp}
+            ref={stageRef}
             style={{ border: '1px solid black' }}
-            onMouseDown={startDrawing}
-            onMouseUp={endDrawing}
-            onMouseMove={draw}
-            onTouchStart={startDrawing}
-            onTouchEnd={endDrawing}
-            onTouchMove={draw}
-        />
+        >
+            <Layer>
+                {lines.map((line, i) => (
+                    <Line
+                        key={i}
+                        points={line.points}
+                        stroke={line.color}
+                        strokeWidth={2}
+                        tension={0.5} // Using tension to create smooth curves
+                        lineCap="round"
+                        globalCompositeOperation={
+                            drawMode === 'erase' ? 'destination-out' : 'source-over'
+                        }
+                    />
+                ))}
+                {newLine && (
+                    <Line
+                        points={newLine.points}
+                        stroke={newLine.color}
+                        strokeWidth={2}
+                        tension={0.5} // Using tension to create smooth curves
+                        lineCap="round"
+                        globalCompositeOperation={
+                            drawMode === 'erase' ? 'destination-out' : 'source-over'
+                        }
+                    />
+                )}
+            </Layer>
+        </Stage>
     );
 };
 

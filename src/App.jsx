@@ -1,67 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import ToggleButton from './components/ToggleButton';
 import ColorButton from './components/ColorButton';
 import Track from './components/Track';
 import Synthesizer from './components/Synthesizer';
 import ControlButtons from './components/ControlButtons';
-import axios from 'axios';
 import * as Tone from 'tone';
 
 function App() {
-    const [mode, setMode] = useState('write');
-    const [color, setColor] = useState('red');
     const [tracks, setTracks] = useState([]);
-    const [currentTrackPoints, setCurrentTrackPoints] = useState([]);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [currentColor, setCurrentColor] = useState('black');
+    const [tempo, setTempo] = useState(120); // Tempo-Status hinzufügen
 
     useEffect(() => {
         if (tracks.length === 0) {
             addTrack();
         }
-    }, []);
-
-    const handleToggle = (newMode) => {
-        setMode(newMode);
-    };
-
-    const handleColorSelect = (selectedColor) => {
-        setColor(selectedColor);
-    };
+        Tone.Transport.bpm.value = tempo; // Tempo beim Start setzen
+    }, [tempo]);
 
     const addTrack = () => {
-        setTracks([...tracks, { id: Date.now(), savedId: null, order: tracks.length }]);
-    };
-
-    const saveDrawing = async (data) => {
-        try {
-            const response = await axios.post('http://your-backend-url/synthdata', data);
-            setTracks((prevTracks) =>
-                prevTracks.map((track) =>
-                    track.id === data.id ? { ...track, savedId: response.data._id } : track
-                )
-            );
-        } catch (error) {
-            console.error('Error saving data', error);
-        }
-    };
-
-    const deleteTrack = async (id) => {
-        const trackToDelete = tracks.find((track) => track.id === id);
-        if (trackToDelete.savedId) {
-            try {
-                await axios.delete(`http://your-backend-url/synthdata/${trackToDelete.savedId}`);
-                setTracks(tracks.filter((track) => track.id !== id));
-            } catch (error) {
-                console.error('Error deleting data', error);
-            }
-        } else {
-            setTracks(tracks.filter((track) => track.id !== id));
-        }
+        setTracks([...tracks, { id: Date.now(), points: [], mode: 'lock' }]);
     };
 
     const togglePlayPause = async () => {
-        await Tone.start(); // Ensure AudioContext is started
+        await Tone.start(); // Ensure the AudioContext is started
+        console.log('Transport started');
         if (isPlaying) {
             Tone.Transport.pause();
         } else {
@@ -71,43 +35,56 @@ function App() {
     };
 
     const stopPlayback = () => {
+        console.log('Stopping transport');
         Tone.Transport.stop();
-        Tone.Transport.position = 0; // Set position to the beginning
+        Tone.Transport.cancel(); // Hiermit werden alle geplanten Events gelöscht
+        Tone.Transport.position = 0;
         setIsPlaying(false);
     };
 
+    const allPoints = tracks.flatMap(track => track.points);
+
+    console.log('All points for synthesizer: ', allPoints);
+
     return (
         <div className="App">
-            <ToggleButton onToggle={handleToggle} />
+            <button onClick={addTrack}>Add New Track</button>
             <div>
                 {['red', 'green', 'blue', 'orange', 'purple', 'yellow'].map((color) => (
-                    <ColorButton key={color} color={color} onSelectColor={handleColorSelect} />
+                    <ColorButton key={color} color={color} onSelectColor={setCurrentColor} />
                 ))}
             </div>
-            <button onClick={addTrack}>Add New Track</button>
+            <div>
+                <label>
+                    Tempo:
+                    <input
+                        type="number"
+                        value={tempo}
+                        onChange={(e) => setTempo(Number(e.target.value))}
+                    />
+                </label>
+            </div>
             <ControlButtons
                 isPlaying={isPlaying}
                 onTogglePlayPause={togglePlayPause}
                 onStop={stopPlayback}
             />
             <div className="tracks-container">
-                {tracks.map((track, index) => (
+                {tracks.map((track) => (
                     <Track
                         key={track.id}
-                        trackId={track.id}
-                        mode={mode}
-                        color={color}
-                        order={index}
-                        onSave={(data) => {
-                            saveDrawing(data);
-                            setCurrentTrackPoints(data.points);
+                        track={track}
+                        isPlaying={isPlaying}
+                        currentColor={currentColor}
+                        onUpdateTrack={(updatedTrack) => {
+                            setTracks(tracks.map(t => t.id === updatedTrack.id ? updatedTrack : t));
                         }}
-                        onDelete={deleteTrack}
-                        onUpdatePoints={setCurrentTrackPoints}
                     />
                 ))}
             </div>
-            {currentTrackPoints.length > 0 && <Synthesizer points={currentTrackPoints} isPlaying={isPlaying} />}
+            {allPoints.length > 0 && (
+                <Synthesizer points={allPoints} isPlaying={isPlaying} />
+            )}
         </div>
     );
 }
