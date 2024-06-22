@@ -1,10 +1,11 @@
 import React from 'react';
 
-const ControlButtons = ({ onStart, onPause, onStop }) => {
+const ControlButtons = ({ isPlaying, onTogglePlayPause, onStop }) => {
     return (
         <div>
-            <button onClick={onStart}>Start</button>
-            <button onClick={onPause}>Pause</button>
+            <button onClick={onTogglePlayPause}>
+                {isPlaying ? 'Pause' : 'Play'}
+            </button>
             <button onClick={onStop}>Stop</button>
         </div>
     );

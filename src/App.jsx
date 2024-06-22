@@ -10,17 +10,16 @@ import * as Tone from 'tone';
 
 function App() {
     const [mode, setMode] = useState('write');
-    const [color, setColor] = useState('red'); // Defaultfarbe auf 'red' gesetzt
-    const [tracks, setTracks] = useState([]); // Zustand für die Liste der Tracks
-    const [currentTrackPoints, setCurrentTrackPoints] = useState([]); // Zustand für aktuelle Trackpunkte
-    const [isPlaying, setIsPlaying] = useState(false); // Zustand für die Wiedergabe
+    const [color, setColor] = useState('red');
+    const [tracks, setTracks] = useState([]);
+    const [currentTrackPoints, setCurrentTrackPoints] = useState([]);
+    const [isPlaying, setIsPlaying] = useState(false);
 
     useEffect(() => {
-        // Füge beim Initialisieren der App einen Track hinzu, falls noch keiner vorhanden ist
         if (tracks.length === 0) {
             addTrack();
         }
-    }, []); // Leer-Array bedeutet, dass dieser Effekt nur einmal beim Initialisieren ausgeführt wird
+    }, []);
 
     const handleToggle = (newMode) => {
         setMode(newMode);
@@ -37,7 +36,6 @@ function App() {
     const saveDrawing = async (data) => {
         try {
             const response = await axios.post('http://your-backend-url/synthdata', data);
-            console.log('Save successful', response.data);
             setTracks((prevTracks) =>
                 prevTracks.map((track) =>
                     track.id === data.id ? { ...track, savedId: response.data._id } : track
@@ -62,22 +60,19 @@ function App() {
         }
     };
 
-    const startPlayback = () => {
-        if (!isPlaying) {
-            Tone.Transport.start();
-            setIsPlaying(true);
-        }
-    };
-
-    const pausePlayback = () => {
+    const togglePlayPause = async () => {
+        await Tone.start(); // Ensure AudioContext is started
         if (isPlaying) {
             Tone.Transport.pause();
-            setIsPlaying(false);
+        } else {
+            Tone.Transport.start();
         }
+        setIsPlaying(!isPlaying);
     };
 
     const stopPlayback = () => {
         Tone.Transport.stop();
+        Tone.Transport.position = 0; // Set position to the beginning
         setIsPlaying(false);
     };
 
@@ -90,7 +85,11 @@ function App() {
                 ))}
             </div>
             <button onClick={addTrack}>Add New Track</button>
-            <ControlButtons onStart={startPlayback} onPause={pausePlayback} onStop={stopPlayback} />
+            <ControlButtons
+                isPlaying={isPlaying}
+                onTogglePlayPause={togglePlayPause}
+                onStop={stopPlayback}
+            />
             <div className="tracks-container">
                 {tracks.map((track, index) => (
                     <Track
@@ -104,10 +103,11 @@ function App() {
                             setCurrentTrackPoints(data.points);
                         }}
                         onDelete={deleteTrack}
+                        onUpdatePoints={setCurrentTrackPoints}
                     />
                 ))}
             </div>
-            {currentTrackPoints.length > 0 && <Synthesizer points={currentTrackPoints} />}
+            {currentTrackPoints.length > 0 && <Synthesizer points={currentTrackPoints} isPlaying={isPlaying} />}
         </div>
     );
 }

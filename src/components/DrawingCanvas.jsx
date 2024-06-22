@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 
-const DrawingCanvas = ({ mode, color, onSave }) => {
+const DrawingCanvas = ({ mode, color, onUpdatePoints }) => {
     const canvasRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [points, setPoints] = useState([]);
@@ -8,7 +8,6 @@ const DrawingCanvas = ({ mode, color, onSave }) => {
     useEffect(() => {
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d');
-        // Initial canvas setup
         context.fillStyle = 'white';
         context.fillRect(0, 0, canvas.width, canvas.height);
     }, []);
@@ -20,8 +19,10 @@ const DrawingCanvas = ({ mode, color, onSave }) => {
 
     const endDrawing = () => {
         setIsDrawing(false);
-        canvasRef.current.getContext('2d').beginPath();
-        onSave(points); // Save points when drawing ends
+        const context = canvasRef.current.getContext('2d');
+        context.beginPath();
+        // Update points only after drawing ends
+        onUpdatePoints(points);
     };
 
     const draw = (event) => {
@@ -48,9 +49,27 @@ const DrawingCanvas = ({ mode, color, onSave }) => {
         context.moveTo(x, y);
 
         if (mode === 'write') {
-            setPoints(prevPoints => [...prevPoints, { x, y, color }]);
+            setPoints((prevPoints) => {
+                const newPoints = [...prevPoints, { x, y, color }];
+                return newPoints;
+            });
         }
     };
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = 'white';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        points.forEach((point) => {
+            context.beginPath();
+            context.arc(point.x, point.y, 1, 0, Math.PI * 2);
+            context.fillStyle = point.color;
+            context.fill();
+        });
+    }, [points]);
 
     return (
         <canvas
